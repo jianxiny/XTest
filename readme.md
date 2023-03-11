@@ -8,3 +8,8 @@
 3. 为了避免手动调用测试，我们需要将测试**注册**在某个地方
 
 测试1： 我们能通过不同的方式创建测试
+
+1. build failures come first
+2. 从结果开始，确定你需要的东西，避免一开始就沉入细节中，首先写测试代码确定你的意图
+3. 即 let the tests drive the design
+4. Do only what is needed to pass

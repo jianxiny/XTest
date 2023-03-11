@@ -18,6 +18,10 @@ namespace MereTDD {
 
         virtual ~TestBase() = default;
 
+        virtual void runEx() {
+            run();
+        }
+
         virtual void run() = 0;
 
         std::string_view name() const {
@@ -32,6 +36,14 @@ namespace MereTDD {
             return mReason;
         }
 
+        std::string_view expectedReason() const {
+            return mExpectedReason;
+        }
+
+        void setExpectedFailureReason(std::string_view reason) {
+            mExpectedReason = reason;
+        }
+
         void setFailed(std::string_view reason) {
             mPassed = false;
             mReason = reason;
@@ -42,6 +54,21 @@ namespace MereTDD {
         std::string mName;
         bool mPassed;
         std::string mReason;
+        std::string mExpectedReason;
+    };
+
+    class MissingException {
+    public:
+        MissingException(std::string_view exType)
+                : mExType(exType) {
+        }
+
+        std::string_view exType() const {
+            return mExType;
+        }
+
+    private:
+        std::string_view mExType;
     };
 
 
@@ -50,39 +77,60 @@ namespace MereTDD {
         return tests;
     }
 
-    inline int runTests(std::ostream & output) {
+    inline int runTests(std::ostream &output) {
         int numPassed = 0;
         int numFailed = 0;
+        int numMissedFailed = 0;
         for (auto *test: getTests()) {
             try {
                 output << "--------\n"
-                          << test->name()
-                          << std::endl;
+                       << test->name()
+                       << std::endl;
 
-                test->run();
-            } catch (...) {
-                test->setFailed("Unexpected exception thrown");
+                test->runEx();
+            }
+            catch (MissingException const &ex) {
+                std::string message = "Expected exception type ";
+                message += ex.exType();
+                message += " was not thrown.";
+                test->setFailed(message);
+            }
+            catch (...) {
+                test->setFailed("Unexpected exception thrown.");
             }
             if (test->passed()) {
+                if (not test->expectedReason().empty()) {
+                    ++numMissedFailed;
+                    output << "Missed expected failure\n"
+                           << "Test passed but was expected to fail."
+                           << std::endl;
+                } else {
+
+                    ++numPassed;
+                    output << "Passed"
+                           << std::endl;
+                }
+            } else if (not test->expectedReason().empty() && test->expectedReason() == test->reason()) {
                 ++numPassed;
-                output << "Passed"
-                          << std::endl;
+                output << "Expected failure(pass)\n"
+                       << test->reason()
+                       << std::endl;
             } else {
                 ++numFailed;
                 output << "Failed\n"
-                          << test->reason()
-                          << std::endl;
+                       << test->reason()
+                       << std::endl;
             }
         }
         // summarizing the results
         output << "------\n";
-        if (numFailed == 0) {
-            output << "All tests passed" << std::endl;
-        } else {
-            output << "Test passed: "
-                      << numPassed
-                      << "\nTests failed: " << numFailed << std::endl;
+        output << "Test passed: "
+               << numPassed
+               << "\nTests failed: " << numFailed;
+        if (numMissedFailed != 0) {
+            output << "\nTests failures missed: " << numMissedFailed;
         }
+        output << std::endl;
 
         return numFailed;
     }
@@ -105,6 +153,28 @@ public:                 \
     }        \
     void run () override;             \
 };                      \
-MERETDD_CLASS MERETDD_INSTANCE("TESTCANBECREATED");  \
+MERETDD_CLASS MERETDD_INSTANCE(testName);  \
+void MERETDD_CLASS::run()
+
+
+#define TEST_EX(testName, exceptionType) \
+class MERETDD_CLASS : public MereTDD::TestBase { \
+public:                                   \
+    MERETDD_CLASS(std::string_view name)  \
+     : TestBase(name)                     {      \
+       MereTDD::getTests().push_back(this);       \
+       }                                 \
+                                         \
+     void run() override;                \
+     void runEx() override {            \
+        try {                            \
+            run();                                 \
+        }catch(exceptionType const &) {  \
+            return;                                 \
+        }                                \
+        throw MereTDD::MissingException(#exceptionType);\
+     }                                        \
+};                                       \
+MERETDD_CLASS MERETDD_INSTANCE(testName); \
 void MERETDD_CLASS::run()
 #endif //MERETDD_TEST_H
