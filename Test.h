@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 #include <string>
-#include <iostream>
+#include <ostream>
 
 namespace MereTDD {
     class TestBase {
@@ -50,10 +50,12 @@ namespace MereTDD {
         return tests;
     }
 
-    inline void runTests() {
+    inline int runTests(std::ostream & output) {
+        int numPassed = 0;
+        int numFailed = 0;
         for (auto *test: getTests()) {
             try {
-                std::cout << "--------\n"
+                output << "--------\n"
                           << test->name()
                           << std::endl;
 
@@ -62,14 +64,27 @@ namespace MereTDD {
                 test->setFailed("Unexpected exception thrown");
             }
             if (test->passed()) {
-                std::cout << "Passed"
+                ++numPassed;
+                output << "Passed"
                           << std::endl;
             } else {
-                std::cout << "Failed\n"
+                ++numFailed;
+                output << "Failed\n"
                           << test->reason()
                           << std::endl;
             }
         }
+        // summarizing the results
+        output << "------\n";
+        if (numFailed == 0) {
+            output << "All tests passed" << std::endl;
+        } else {
+            output << "Test passed: "
+                      << numPassed
+                      << "\nTests failed: " << numFailed << std::endl;
+        }
+
+        return numFailed;
     }
 }
 #define MERETDD_CLASS_FINAL(line) Test ## line

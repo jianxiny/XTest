@@ -6,6 +6,5 @@
 // now the main file is not care about the test name
 
 int main() {
-    MereTDD::runTests();
-    return 0;
+    return MereTDD::runTests(std::cout);
 }
