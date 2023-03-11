@@ -3,4 +3,8 @@
 //
 #include "../Test.h"
 
-Test {};
+Test("Test can be created") {};
+
+Test("Test with throw can be created") {
+    throw 1;
+};
