@@ -71,6 +71,29 @@ namespace MereTDD {
         std::string_view mExType;
     };
 
+    class ConfirmException {
+    public:
+        ConfirmException() = default;
+
+        virtual ~ConfirmException() = default;
+
+        std::string_view reason() const {
+            return mReason;
+        }
+
+    protected:
+        std::string mReason;
+    };
+
+    class BoolConfirmException : public ConfirmException {
+    public:
+        BoolConfirmException(bool expected, int line) {
+            mReason = "Confirm failed on line ";
+            mReason += std::to_string(line) + "\n";
+            mReason += " Expected: ";
+            mReason += expected ? "true" : "false";
+        }
+    };
 
     inline std::vector<TestBase *> &getTests() {
         static std::vector<TestBase *> tests;
@@ -88,6 +111,9 @@ namespace MereTDD {
                        << std::endl;
 
                 test->runEx();
+            }
+            catch (ConfirmException const &ex) {
+                test->setFailed(ex.reason());
             }
             catch (MissingException const &ex) {
                 std::string message = "Expected exception type ";
@@ -143,6 +169,7 @@ namespace MereTDD {
 #define MERETDD_INSTANCE_RELAY(line) MERETDD_INSTANCE_FINAL(line)
 #define MERETDD_INSTANCE MERETDD_INSTANCE_RELAY(__LINE__)
 #define Test(testName) \
+namespace{                       \
 class MERETDD_CLASS: public MereTDD::TestBase \
 {                       \
 public:                 \
@@ -152,12 +179,14 @@ public:                 \
       MereTDD::getTests().push_back(this);         \
     }        \
     void run () override;             \
-};                      \
+};                     \
+}                      \
 MERETDD_CLASS MERETDD_INSTANCE(testName);  \
 void MERETDD_CLASS::run()
 
 
 #define TEST_EX(testName, exceptionType) \
+namespace{                                         \
 class MERETDD_CLASS : public MereTDD::TestBase { \
 public:                                   \
     MERETDD_CLASS(std::string_view name)  \
@@ -175,6 +204,7 @@ public:                                   \
         throw MereTDD::MissingException(#exceptionType);\
      }                                        \
 };                                       \
-MERETDD_CLASS MERETDD_INSTANCE(testName); \
+}\
+MERETDD_CLASS MERETDD_INSTANCE(testName);\
 void MERETDD_CLASS::run()
 #endif //MERETDD_TEST_H
