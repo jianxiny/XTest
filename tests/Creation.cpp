@@ -3,16 +3,17 @@
 //
 #include "../Test.h"
 
-Test("Test can be created") {};
 
-Test("Test that throws unexpectedly can be created") {
+TEST("Test can be created") {};
+
+TEST("Test that throws unexpectedly can be created") {
     setExpectedFailureReason(
             "Unexpected exception thrown."
             );
     throw "Unexpected";
 }
 
-Test("Test that should throw unexpectedly can be created") {
+TEST("Test that should throw unexpectedly can be created") {
     setExpectedFailureReason(
             "Unexpected exception thrown."
             );
