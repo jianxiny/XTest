@@ -1,1 +1,0 @@
-1. Make test easy to understand
