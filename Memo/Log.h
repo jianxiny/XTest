@@ -11,6 +11,9 @@
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <map>
+#include <memory>
+#include <vector>
 
 namespace Memo {
 
@@ -26,6 +29,8 @@ namespace Memo {
             return mText;
         }
 
+        virtual std::unique_ptr<Tag> clone() const = 0;
+
 
     protected:
         Tag(std::string const &key, std::string const &value)
@@ -38,31 +43,74 @@ namespace Memo {
         std::string mText;
     };
 
-    class LogLevel: public Tag {
+    class LogLevel : public Tag {
     public:
-        LogLevel(std::string const & text)
-        : Tag("log_level", text){}
+        LogLevel(std::string const &text)
+                : Tag("log_level", text) {}
+
+        std::unique_ptr<Tag> clone() const override {
+            return std::unique_ptr<Tag>(new LogLevel(*this));
+        }
     };
 
-    inline std::string to_string(Tag const & tag) {
+    inline std::string to_string(Tag const &tag) {
         return tag.text();
     }
 
-    inline std::fstream log(std::string_view preMessage = "") {
-        // timestamp support
+
+    inline std::map<std::string, std::unique_ptr<Tag>> &
+    getDefaultTags() {
+        static std::map<std::string, std::unique_ptr<Tag>> tags;
+        return tags;
+    }
+
+    inline void addDefaultTag(Tag const &tag) {
+        auto &tags = getDefaultTags();
+        tags[tag.key()] = tag.clone();
+    }
+
+    inline std::fstream log(std::vector<Tag const *> tags = {}) {
         auto const now = std::chrono::system_clock::now();
         std::time_t const tmNow = std::chrono::system_clock::to_time_t(now);
-        auto const ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        auto const ms = duration_cast<std::chrono::milliseconds>(
+                now.time_since_epoch()) % 1000;
         std::fstream logFile("application.log", std::ios::app);
         logFile << std::endl
-                << std::put_time(std::gmtime(&tmNow), "%Y-%m-%dT%H:%M:%S.")
-                << std::setw(3) << std::setfill('0') << std::to_string(ms.count())
-                << " " << preMessage << " ";
+                <<
+                std::put_time(std::gmtime(&tmNow),
+                              "%Y-%m-%dT%H:%M:%S.")
+                << std::setw(3) << std::setfill('0')
+                <<
+                std::to_string(ms.count());
+        for (auto const &defaultTag: getDefaultTags()) {
+            if (std::find_if(tags.begin(), tags.end(), [&defaultTag](auto const &tag) {
+                return defaultTag.first == tag->key();
+            }) == tags.end()) {
+                logFile << " " << defaultTag.second->text();
+            }
+        }
+        for (auto const &tag: tags) {
+            logFile << " " << tag->text();
+        }
+        logFile << " ";
         return logFile;
     }
 
-    inline std::fstream log(Tag const & tag) {
-        return log(to_string(tag));
+    inline auto log(Tag const &tag1) {
+        return log({&tag1});
     }
+
+    inline auto log(Tag const &tag1,
+                    Tag const &tag2) {
+        return log({&tag1, &tag2});
+    }
+
+    inline auto log(Tag const &tag1,
+                    Tag const &tag2,
+                    Tag const &tag3) {
+        return log({&tag1, &tag2, &tag3});
+    }
+
+
 }// namespace Memo
 #endif //MEMO_LOG_H

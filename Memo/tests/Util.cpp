@@ -7,6 +7,7 @@
 #include <fstream>
 #include <chrono>
 #include <random>
+#include <vector>
 
 std::string Util::randomString() {
     static bool firstCall = true;
@@ -22,11 +23,24 @@ std::string Util::randomString() {
     return std::to_string(dist(rng));
 }
 
-bool Util::isTextInFile(std::string_view text, std::string_view fileName) {
+bool Util::isTextInFile(std::string_view text, std::string_view fileName,
+                        std::vector<std::string> const &wantedTags,
+                        std::vector<std::string> const &unwantedTags
+) {
     std::ifstream logfile(fileName.data());
     std::string line;
     while (std::getline(logfile, line)) {
         if (line.find(text) != std::string::npos) {
+            for(auto const & tag : wantedTags) {
+                if (line.find(tag) == std::string::npos) {
+                    return false;
+                }
+            }
+            for (auto const & tag : unwantedTags) {
+                if (line.find(tag) != std::string::npos) {
+                    return false;
+                }
+            }
             return true;
         }
     }
